@@ -391,12 +391,6 @@
       </div>
     </div>
 
-    <div id="export-notice" class="export-notice" style="display:none">
-      ✅ New entries saved locally. Export JSON and replace <code>data/fuel-log.json</code> in your GitHub repo to persist permanently.
-      <div style="margin-top:10px;display:flex;gap:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="exportFuelLog()">📋 Export JSON</button>
-      </div>
-    </div>
 
     <div class="section">
       <div class="section-title" style="margin-bottom:1rem;">All Entries</div>
@@ -491,6 +485,33 @@ function makeBadge(cls, text) {
   span.textContent = text;
   return span;
 }
+
+// ── GitHub API config ────────────────────────────────────────────────────────
+// Paste your fine-grained token here (Contents: read+write on bike-tracker repo)
+const GH_TOKEN = localStorage.getItem('gh_token') || '';
+const GH_OWNER = 'pkesavangg';
+const GH_REPO  = 'bike-tracker';
+const GH_API   = 'https://api.github.com';
+
+async function ghGetFile(path) {
+  const res = await fetch(`${GH_API}/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`, {
+    headers: { Authorization: 'token ' + GH_TOKEN, Accept: 'application/vnd.github+json' }
+  });
+  if (!res.ok) throw new Error('GitHub read failed: ' + res.status);
+  const data = await res.json();
+  return { content: JSON.parse(atob(data.content.replace(/\n/g, ''))), sha: data.sha };
+}
+
+async function ghPutFile(path, content, sha, message) {
+  const res = await fetch(`${GH_API}/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`, {
+    method: 'PUT',
+    headers: { Authorization: 'token ' + GH_TOKEN, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, content: btoa(JSON.stringify(content, null, 2)), sha })
+  });
+  if (!res.ok) throw new Error('GitHub write failed: ' + res.status);
+}
+
+function hasToken() { return GH_TOKEN && GH_TOKEN.length > 10; }
 
 let serviceData = [];
 let fuelLog     = [];
@@ -652,12 +673,10 @@ function renderServiceCostChart() {
 // ── Fuel log ─────────────────────────────────────────────────────────────────
 async function loadFuelLog() {
   try {
-    const res  = await fetch('./data/fuel-log.json');
-    const base = await res.json();
-    const local = safeParseJSON(localStorage.getItem('fuel-log-local'), []);
-    fuelLog = [...base, ...local].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const res = await fetch('./data/fuel-log.json?t=' + Date.now());
+    fuelLog   = await res.json();
   } catch (_) {
-    fuelLog = safeParseJSON(localStorage.getItem('fuel-log-local'), []);
+    fuelLog = [];
   }
   computeMileages();
   renderFuelLog();
@@ -946,7 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-function addFuelEntry() {
+async function addFuelEntry() {
   const date          = document.getElementById('f-date').value;
   const odometer      = parseFloat(document.getElementById('f-odometer').value);
   const liters        = parseFloat(document.getElementById('f-liters').value);
@@ -965,54 +984,134 @@ function addFuelEntry() {
     pricePerLiter: +pricePerLiter.toFixed(2),
     totalCost: +totalCost.toFixed(0), station, notes };
 
-  const local = safeParseJSON(localStorage.getItem('fuel-log-local'), []);
-  local.push(entry);
-  localStorage.setItem('fuel-log-local', JSON.stringify(local));
-
-  fuelLog.push(entry);
-  fuelLog.sort((a, b) => new Date(a.date) - new Date(b.date));
-  computeMileages();
-  renderFuelLog();
   closeFuelModal();
-  document.getElementById('export-notice').style.display = 'block';
+
+  if (!hasToken()) {
+    // No token: just update locally and show token prompt
+    fuelLog.push(entry);
+    fuelLog.sort((a, b) => new Date(a.date) - new Date(b.date));
+    computeMileages(); renderFuelLog();
+    promptForToken('Entry added locally. Set your GitHub token to save permanently.');
+    return;
+  }
+
+  showSaving('Saving to GitHub…');
+  try {
+    const { content, sha } = await ghGetFile('data/fuel-log.json');
+    content.push(entry);
+    content.sort((a, b) => new Date(a.date) - new Date(b.date));
+    await ghPutFile('data/fuel-log.json', content, sha, 'Add fuel entry ' + date);
+    fuelLog = content;
+    computeMileages(); renderFuelLog();
+    showSaving('✅ Saved to GitHub!', true);
+  } catch (err) {
+    showSaving('❌ Save failed: ' + err.message, true);
+    fuelLog.push(entry);
+    fuelLog.sort((a, b) => new Date(a.date) - new Date(b.date));
+    computeMileages(); renderFuelLog();
+  }
 }
 
-function deleteFuelEntry(id) {
+async function deleteFuelEntry(id) {
   if (!confirm('Delete this fuel entry?')) return;
-  fuelLog = fuelLog.filter(f => f.id !== id);
-  const local = safeParseJSON(localStorage.getItem('fuel-log-local'), [])
-    .filter(f => f.id !== id);
-  localStorage.setItem('fuel-log-local', JSON.stringify(local));
-  computeMileages();
-  renderFuelLog();
-}
+  const updated = fuelLog.filter(f => f.id !== id);
 
-function exportFuelLog() {
-  const json = JSON.stringify(fuelLog, null, 2);
-  const a = Object.assign(document.createElement('a'), {
-    href:     URL.createObjectURL(new Blob([json], { type: 'application/json' })),
-    download: 'fuel-log.json'
-  });
-  a.click();
+  if (!hasToken()) {
+    fuelLog = updated; computeMileages(); renderFuelLog();
+    promptForToken('Deleted locally. Set your GitHub token to persist.');
+    return;
+  }
+
+  showSaving('Deleting from GitHub…');
+  try {
+    const { sha } = await ghGetFile('data/fuel-log.json');
+    await ghPutFile('data/fuel-log.json', updated, sha, 'Delete fuel entry ' + id);
+    fuelLog = updated; computeMileages(); renderFuelLog();
+    showSaving('✅ Deleted from GitHub!', true);
+  } catch (err) {
+    showSaving('❌ Delete failed: ' + err.message, true);
+    fuelLog = updated; computeMileages(); renderFuelLog();
+  }
 }
 
 // ── Service modal ─────────────────────────────────────────────────────────────
 function openServiceModal()  { document.getElementById('service-modal').classList.add('open'); }
 function closeServiceModal() { document.getElementById('service-modal').classList.remove('open'); }
 
-function submitServiceUpdate() {
-  const seq        = document.getElementById('svc-seq').value;
+async function submitServiceUpdate() {
+  const seq        = parseInt(document.getElementById('svc-seq').value);
   const actualDate = document.getElementById('svc-actual-date').value;
   const laborCost  = parseFloat(document.getElementById('svc-labor-cost').value) || 0;
   const addCost    = parseFloat(document.getElementById('svc-add-cost').value)   || 0;
   const notes      = document.getElementById('svc-notes').value.trim().slice(0, 200);
   if (!seq) { alert('Select a service number first.'); return; }
-  const snippet =
-    `Service #${seq}\n  Actual Date: ${actualDate}\n  Labor Cost: ₹${laborCost}\n  Additional: ₹${addCost}\n  Notes: ${notes}`;
-  navigator.clipboard.writeText(snippet)
-    .then(() => { alert('Copied to clipboard!\n\n' + snippet); closeServiceModal(); })
-    .catch(() => { prompt('Copy this snippet:', snippet); closeServiceModal(); });
+
+  closeServiceModal();
+
+  if (!hasToken()) {
+    // Update in-memory only
+    const s = serviceData.find(x => x.seq === seq);
+    if (s) { s.actualDate = actualDate; s.laborCost = laborCost; s.additionalCost = addCost;
+             s.totalCost = laborCost + addCost; s.done = !!actualDate; s.notes = notes; }
+    renderServiceTimeline(); renderServiceCostChart();
+    promptForToken('Updated locally. Set your GitHub token to save permanently.');
+    return;
+  }
+
+  showSaving('Saving service update to GitHub…');
+  try {
+    const { content: json, sha } = await ghGetFile('data/service.json');
+    const s = json.services.find(x => x.seq === seq);
+    if (s) { s.actualDate = actualDate; s.laborCost = laborCost;
+             s.additionalCost = addCost; s.done = !!actualDate; s.notes = notes; }
+    await ghPutFile('data/service.json', json, sha, 'Update service #' + seq);
+    serviceData = json.services.map(s => ({ ...s, totalCost: (s.laborCost||0)+(s.additionalCost||0) }));
+    renderServiceTimeline(); renderServiceCostChart();
+    showSaving('✅ Service updated on GitHub!', true);
+  } catch (err) {
+    showSaving('❌ Save failed: ' + err.message, true);
+  }
 }
+
+// ── GitHub token UI helpers ───────────────────────────────────────────────────
+function showSaving(msg, autohide = false) {
+  let el = document.getElementById('gh-status-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'gh-status-toast';
+    el.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:#1a1d27;border:1px solid #2e3354;border-radius:12px;padding:12px 18px;font-size:0.85rem;z-index:999;box-shadow:0 4px 24px rgba(0,0,0,0.5);color:#e2e8f0;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (autohide) setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+function promptForToken(context) {
+  const token = prompt(
+    (context ? context + '\n\n' : '') +
+    'Paste your GitHub fine-grained token to enable auto-save:\n' +
+    '(GitHub → Settings → Developer settings → Fine-grained tokens)'
+  );
+  if (token && token.length > 10) {
+    localStorage.setItem('gh_token', token);
+    location.reload();
+  }
+}
+
+// Show token setup button in nav if no token
+window.addEventListener('DOMContentLoaded', () => {
+  if (!hasToken()) {
+    const nav = document.querySelector('.nav-tabs');
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-ghost btn-sm';
+    btn.style.marginLeft = '8px';
+    btn.textContent = '🔑 Set Token';
+    btn.title = 'Set GitHub token to enable auto-save';
+    btn.addEventListener('click', () => promptForToken(''));
+    nav.appendChild(btn);
+  }
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDate(str, short = false) {
