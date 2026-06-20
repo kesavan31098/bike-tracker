@@ -1,0 +1,17 @@
+[
+  { "id": 1,  "date": "2026-03-06", "odometer": 20,   "liters": 2.98, "pricePerLiter": 100.67, "totalCost": 300, "station": "BP Vadapalini",              "notes": "" },
+  { "id": 2,  "date": "2026-03-08", "odometer": null,  "liters": 3.97, "pricePerLiter": 100.75, "totalCost": 400, "station": "BP Velacherry",              "notes": "" },
+  { "id": 3,  "date": "2026-03-14", "odometer": null,  "liters": 2.00, "pricePerLiter": 100.50, "totalCost": 201, "station": "BP Vadapalini",              "notes": "" },
+  { "id": 4,  "date": "2026-03-26", "odometer": 380,  "liters": 3.16, "pricePerLiter": 100.63, "totalCost": 318, "station": "BP Vadapalini",              "notes": "" },
+  { "id": 5,  "date": "2026-04-07", "odometer": 579,  "liters": 2.48, "pricePerLiter": 100.81, "totalCost": 250, "station": "Indian Oil Vadapalini",      "notes": "" },
+  { "id": 6,  "date": "2026-04-13", "odometer": 652,  "liters": 2.98, "pricePerLiter": 100.67, "totalCost": 300, "station": "BP Vadapalini",              "notes": "" },
+  { "id": 7,  "date": "2026-04-19", "odometer": 774,  "liters": 2.98, "pricePerLiter": 100.67, "totalCost": 300, "station": "BP Vadapalini",              "notes": "" },
+  { "id": 8,  "date": "2026-04-24", "odometer": 876,  "liters": 2.98, "pricePerLiter": 100.67, "totalCost": 300, "station": "BP Vadapalini",              "notes": "" },
+  { "id": 9,  "date": "2026-05-01", "odometer": null,  "liters": 1.98, "pricePerLiter": 101.01, "totalCost": 200, "station": "HP ECR",                    "notes": "" },
+  { "id": 10, "date": "2026-05-05", "odometer": 1089, "liters": 1.98, "pricePerLiter": 101.01, "totalCost": 200, "station": "BP Vadapalini",              "notes": "" },
+  { "id": 11, "date": "2026-05-12", "odometer": 1265, "liters": 4.00, "pricePerLiter": 107.50, "totalCost": 430, "station": "BP Vadapalini",              "notes": "" },
+  { "id": 12, "date": "2026-05-23", "odometer": 1438, "liters": 1.80, "pricePerLiter": 111.11, "totalCost": 200, "station": "BP Vadapalini",              "notes": "" },
+  { "id": 13, "date": "2026-05-29", "odometer": 1518, "liters": 1.80, "pricePerLiter": 111.11, "totalCost": 200, "station": "BP Vadapalini",              "notes": "" },
+  { "id": 14, "date": "2026-06-06", "odometer": 1520, "liters": 1.80, "pricePerLiter": 111.11, "totalCost": 200, "station": "Indian Oil Mettupalayam",    "notes": "" },
+  { "id": 15, "date": "2026-06-07", "odometer": 1622, "liters": 3.60, "pricePerLiter": 106.11, "totalCost": 382, "station": "BP Vadapalini",              "notes": "" }
+]

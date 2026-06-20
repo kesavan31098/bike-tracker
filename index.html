@@ -183,6 +183,17 @@
       border-radius: 12px; padding: 1rem; margin-bottom: 1rem; font-size: 0.82rem; color: var(--muted);
     }
     code { background: var(--surface); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.8rem; }
+
+    .bike-switcher { display: flex; gap: 4px; background: var(--surface2); border-radius: 10px; padding: 4px; border: 1px solid var(--border); }
+    .bike-btn { padding: 6px 14px; border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 600; border: none; background: transparent; color: var(--muted); transition: all 0.2s; white-space: nowrap; }
+    .bike-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    .bike-btn:hover:not(.active) { color: var(--text); }
+
+    @media (max-width: 700px) {
+      nav { flex-wrap: wrap; height: auto; padding: 12px 1rem; gap: 8px; }
+      .bike-switcher { order: 2; width: 100%; justify-content: center; }
+      .nav-tabs { order: 3; width: 100%; justify-content: center; }
+    }
   </style>
 </head>
 <body>
@@ -195,10 +206,16 @@
       <p>Yamaha FZS FI V4</p>
     </div>
   </div>
-  <div class="nav-tabs">
-    <button class="nav-tab active" data-page="dashboard" onclick="showPage(this)">Dashboard</button>
-    <button class="nav-tab" data-page="service" onclick="showPage(this)">Service</button>
-    <button class="nav-tab" data-page="fuel" onclick="showPage(this)">Fuel Log</button>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="bike-switcher" id="bike-switcher">
+      <button class="bike-btn active" data-bike="fzs" onclick="switchBike('fzs', this)">🏍️ FZS V4</button>
+      <button class="bike-btn" data-bike="jupiter" onclick="switchBike('jupiter', this)">🛵 Jupiter 125</button>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-page="dashboard" onclick="showPage(this)">Dashboard</button>
+      <button class="nav-tab" data-page="service" onclick="showPage(this)">Service</button>
+      <button class="nav-tab" data-page="fuel" onclick="showPage(this)">Fuel Log</button>
+    </div>
   </div>
 </nav>
 
@@ -206,19 +223,19 @@
 
   <!-- DASHBOARD -->
   <div id="page-dashboard" class="page active">
-    <div class="bike-header">
-      <span class="bike-emoji">🏍️</span>
+    <div class="bike-header" id="bike-header">
+      <span class="bike-emoji" id="bike-header-emoji">🏍️</span>
       <div>
-        <div class="bike-title">Yamaha FZS FI V4</div>
-        <div class="bike-sub">Ice Fluo-Vermillion · Registered 2024</div>
+        <div class="bike-title" id="bike-header-name">—</div>
+        <div class="bike-sub"  id="bike-header-sub">—</div>
         <div class="bike-meta">
           <div class="bike-meta-item">
             <div class="bike-meta-label">Insurance</div>
-            <div class="bike-meta-value">United India Insurance</div>
+            <div class="bike-meta-value" id="bike-header-insurance">—</div>
           </div>
           <div class="bike-meta-item">
-            <div class="bike-meta-label">Policy No</div>
-            <div class="bike-meta-value">0914013124P112863361</div>
+            <div class="bike-meta-label">Valid Upto / Policy</div>
+            <div class="bike-meta-value" id="bike-header-policy">—</div>
           </div>
         </div>
       </div>
@@ -510,6 +527,25 @@ async function ghPutFile(path, content, sha, message) {
 
 function hasToken() { return GH_TOKEN && GH_TOKEN.length > 10; }
 
+// ── Bike config ──────────────────────────────────────────────────────────────
+const BIKES = {
+  fzs: {
+    key:         'fzs',
+    label:       'FZS V4',
+    emoji:       '🏍️',
+    serviceFile: 'data/service.json',
+    fuelFile:    'data/fuel-log.json',
+  },
+  jupiter: {
+    key:         'jupiter',
+    label:       'Jupiter 125',
+    emoji:       '🛵',
+    serviceFile: 'data/jupiter-service.json',
+    fuelFile:    'data/jupiter-fuel.json',
+  },
+};
+
+let activeBike = localStorage.getItem('activeBike') || 'fzs';
 let serviceData = [];
 let fuelLog     = [];
 
@@ -524,15 +560,38 @@ function showPage(btn) {
 
 // ── Bootstrap ───────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
+  // Restore last active bike in switcher UI
+  document.querySelectorAll('.bike-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.bike === activeBike);
+  });
+  await loadBikeData();
+});
+
+async function switchBike(key, btn) {
+  if (key === activeBike) return;
+  activeBike = key;
+  localStorage.setItem('activeBike', key);
+  document.querySelectorAll('.bike-btn').forEach(b => b.classList.toggle('active', b.dataset.bike === key));
+  // Destroy all charts so they get recreated with new bike's data
+  [fuelPriceChart, fuelMonthlyChart, window._svcCostChart, window._dashMonthlyChart]
+    .forEach(c => { if (c) c.destroy(); });
+  fuelPriceChart = fuelMonthlyChart = window._svcCostChart = window._dashMonthlyChart = null;
+  await loadBikeData();
+  // Go back to dashboard on switch
+  showPage(document.querySelector('[data-page="dashboard"]'));
+}
+
+async function loadBikeData() {
   await Promise.all([loadServiceData(), loadFuelLog()]);
   renderDashboard();
-});
+}
 
 // ── Service data ─────────────────────────────────────────────────────────────
 async function loadServiceData() {
   try {
-    const res  = await fetch('./data/service.json');
+    const res  = await fetch('./' + BIKES[activeBike].serviceFile + '?t=' + Date.now());
     const json = await res.json();
+    window._loadedBikeMeta = json.bike || {};
     serviceData = json.services.map(s => ({
       ...s,
       totalCost: (s.laborCost || 0) + (s.additionalCost || 0),
@@ -549,6 +608,14 @@ async function loadServiceData() {
 function renderServiceTimeline() {
   document.getElementById('service-loading').style.display = 'none';
   document.getElementById('service-content').style.display = 'block';
+
+  // Update bike header
+  const b = (window._loadedBikeMeta) || {};
+  setText('bike-header-emoji',     b.emoji    || BIKES[activeBike].emoji);
+  setText('bike-header-name',      b.name     || '—');
+  setText('bike-header-sub',       (b.variant || '') + (b.year ? ' · Registered ' + b.year : ''));
+  setText('bike-header-insurance', b.insurance || '—');
+  setText('bike-header-policy',    b.insuranceValidUpto || b.policyNo || '—');
 
   const done    = serviceData.filter(s => s.done);
   const pending = serviceData.filter(s => !s.done);
@@ -642,9 +709,10 @@ function renderServiceTimeline() {
 }
 
 function renderServiceCostChart() {
+  if (window._svcCostChart) { window._svcCostChart.destroy(); window._svcCostChart = null; }
   const done = serviceData.filter(s => s.done && s.totalCost > 0);
   const ctx  = document.getElementById('serviceCostChart').getContext('2d');
-  new Chart(ctx, {
+  window._svcCostChart = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: done.map(s => '#' + s.seq + ' (' + (s.odometer / 1000).toFixed(0) + 'k)'),
@@ -670,7 +738,7 @@ function renderServiceCostChart() {
 // ── Fuel log ─────────────────────────────────────────────────────────────────
 async function loadFuelLog() {
   try {
-    const res = await fetch('./data/fuel-log.json?t=' + Date.now());
+    const res = await fetch('./' + BIKES[activeBike].fuelFile + '?t=' + Date.now());
     fuelLog   = await res.json();
   } catch (_) {
     fuelLog = [];
@@ -874,6 +942,7 @@ function renderDashboard() {
 }
 
 function renderDashMonthlyChart() {
+  if (window._dashMonthlyChart) { window._dashMonthlyChart.destroy(); window._dashMonthlyChart = null; }
   const byMonth = {};
   fuelLog.forEach(f => {
     const key = f.date.slice(0, 7);
@@ -885,7 +954,7 @@ function renderDashMonthlyChart() {
     return new Date(+y, +m - 1).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
   });
   const ctx = document.getElementById('dashMonthlyChart').getContext('2d');
-  new Chart(ctx, {
+  window._dashMonthlyChart = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: monthLabels,
@@ -986,10 +1055,11 @@ async function addFuelEntry() {
 
   showSaving('Saving to GitHub…');
   try {
-    const { content, sha } = await ghGetFile('data/fuel-log.json');
+    const fuelPath = BIKES[activeBike].fuelFile;
+    const { content, sha } = await ghGetFile(fuelPath);
     content.push(entry);
     content.sort((a, b) => new Date(a.date) - new Date(b.date));
-    await ghPutFile('data/fuel-log.json', content, sha, 'Add fuel entry ' + date);
+    await ghPutFile(fuelPath, content, sha, 'Add fuel entry ' + date);
     fuelLog = content;
     renderFuelLog();
     showSaving('✅ Saved to GitHub!', true);
@@ -1013,8 +1083,9 @@ async function deleteFuelEntry(id) {
 
   showSaving('Deleting from GitHub…');
   try {
-    const { sha } = await ghGetFile('data/fuel-log.json');
-    await ghPutFile('data/fuel-log.json', updated, sha, 'Delete fuel entry ' + id);
+    const fuelPath = BIKES[activeBike].fuelFile;
+    const { sha } = await ghGetFile(fuelPath);
+    await ghPutFile(fuelPath, updated, sha, 'Delete fuel entry ' + id);
     fuelLog = updated; renderFuelLog();
     showSaving('✅ Deleted from GitHub!', true);
   } catch (err) {
@@ -1049,11 +1120,11 @@ async function submitServiceUpdate() {
 
   showSaving('Saving service update to GitHub…');
   try {
-    const { content: json, sha } = await ghGetFile('data/service.json');
+    const { content: json, sha } = await ghGetFile(BIKES[activeBike].serviceFile);
     const s = json.services.find(x => x.seq === seq);
     if (s) { s.actualDate = actualDate; s.laborCost = laborCost;
              s.additionalCost = addCost; s.done = !!actualDate; s.notes = notes; }
-    await ghPutFile('data/service.json', json, sha, 'Update service #' + seq);
+    await ghPutFile(BIKES[activeBike].serviceFile, json, sha, 'Update service #' + seq);
     serviceData = json.services.map(s => ({ ...s, totalCost: (s.laborCost||0)+(s.additionalCost||0) }));
     renderServiceTimeline(); renderServiceCostChart();
     showSaving('✅ Service updated on GitHub!', true);

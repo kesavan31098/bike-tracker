@@ -4,7 +4,8 @@
     "variant": "Ice Fluo-Vermillion",
     "year": 2024,
     "insurance": "United India Insurance Co. Ltd",
-    "policyNo": "0914013124P112863361"
+    "insuranceValidUpto": "Policy No: 0914013124P112863361",
+    "emoji": "🏍️"
   },
   "services": [
     { "seq": 1,  "odometer": 1000,  "scheduledDate": "2024-12-15", "actualDate": "2024-01-03", "laborCost": 803,  "additionalCost": 273,  "done": true,  "notes": "" },
