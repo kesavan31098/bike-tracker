@@ -241,9 +241,9 @@
         <div class="card-sub" id="dash-fuel-spent">loading…</div>
       </div>
       <div class="card">
-        <div class="card-label">Avg Mileage</div>
-        <div class="card-value" id="dash-avg-mileage">—</div>
-        <div class="card-sub">km / litre</div>
+        <div class="card-label">Cost per km</div>
+        <div class="card-value" id="dash-cost-per-km">—</div>
+        <div class="card-sub">₹ per kilometre</div>
       </div>
     </div>
 
@@ -269,8 +269,8 @@
         <canvas id="serviceCostChart"></canvas>
       </div>
       <div class="chart-box section">
-        <div class="section-title" style="margin-bottom:1rem;">Fuel Efficiency (km/L)</div>
-        <canvas id="dashMileageChart"></canvas>
+        <div class="section-title" style="margin-bottom:1rem;">Monthly Fuel Spend (₹)</div>
+        <canvas id="dashMonthlyChart"></canvas>
       </div>
     </div>
   </div>
@@ -358,36 +358,36 @@
     </div>
 
     <div class="cards" style="margin-bottom:1.5rem;">
-      <div class="card green">
-        <div class="card-label">Avg Mileage</div>
-        <div class="card-value" id="fl-avg-mileage">—</div>
-        <div class="card-sub">km / litre</div>
-      </div>
-      <div class="card accent">
-        <div class="card-label">Best Mileage</div>
-        <div class="card-value" id="fl-best-mileage">—</div>
-        <div class="card-sub" id="fl-best-date">—</div>
-      </div>
       <div class="card amber">
         <div class="card-label">Total Fuel Spent</div>
         <div class="card-value" id="fl-total-spent">—</div>
         <div class="card-sub" id="fl-total-liters">—</div>
       </div>
+      <div class="card green">
+        <div class="card-label">Cost per km</div>
+        <div class="card-value" id="fl-cost-per-km">—</div>
+        <div class="card-sub">₹ per kilometre (lifetime)</div>
+      </div>
+      <div class="card accent">
+        <div class="card-label">Monthly Avg Spend</div>
+        <div class="card-value" id="fl-monthly-avg">—</div>
+        <div class="card-sub">₹ per month</div>
+      </div>
       <div class="card">
-        <div class="card-label">Avg Fill</div>
-        <div class="card-value" id="fl-avg-fill">—</div>
-        <div class="card-sub">litres per fill-up</div>
+        <div class="card-label">Avg Days Between Fills</div>
+        <div class="card-value" id="fl-avg-days">—</div>
+        <div class="card-sub">fill frequency</div>
       </div>
     </div>
 
     <div class="charts-row section">
       <div class="chart-box">
-        <div class="section-title" style="margin-bottom:1rem;">Mileage Trend (km/L)</div>
-        <canvas id="fuelMileageChart"></canvas>
+        <div class="section-title" style="margin-bottom:1rem;">Fuel Price Trend (₹/L)</div>
+        <canvas id="fuelPriceChart"></canvas>
       </div>
       <div class="chart-box">
-        <div class="section-title" style="margin-bottom:1rem;">Fuel Cost per Fill-up (₹)</div>
-        <canvas id="fuelCostChart"></canvas>
+        <div class="section-title" style="margin-bottom:1rem;">Monthly Spend (₹)</div>
+        <canvas id="fuelMonthlyChart"></canvas>
       </div>
     </div>
 
@@ -400,11 +400,11 @@
             <thead>
               <tr>
                 <th>#</th><th>Date</th><th>Odometer</th><th>Litres</th>
-                <th>₹/L</th><th>Total (₹)</th><th>Mileage</th><th>Station</th><th></th>
+                <th>₹/L</th><th>Total (₹)</th><th>Station</th><th></th>
               </tr>
             </thead>
             <tbody id="fuel-table-body">
-              <tr><td colspan="9" class="loading">Loading…</td></tr>
+              <tr><td colspan="8" class="loading">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -450,9 +450,6 @@
             <label>Notes</label>
             <input type="text" id="f-notes" placeholder="Optional…" maxlength="200" />
           </div>
-        </div>
-        <div id="f-mileage-preview" style="display:none;background:var(--surface2);border-radius:10px;padding:1rem;margin-top:1rem;font-size:0.85rem;">
-          Estimated mileage: <strong id="f-mileage-val">—</strong> km/L
         </div>
         <div class="form-actions">
           <button class="btn btn-ghost" onclick="closeFuelModal()">Cancel</button>
@@ -678,7 +675,6 @@ async function loadFuelLog() {
   } catch (_) {
     fuelLog = [];
   }
-  computeMileages();
   renderFuelLog();
 }
 
@@ -686,44 +682,54 @@ function safeParseJSON(str, fallback) {
   try { return JSON.parse(str) || fallback; } catch { return fallback; }
 }
 
-function computeMileages() {
+function computeFuelStats() {
+  if (fuelLog.length < 2) return { costPerKm: null, monthlyAvg: null, avgDays: null };
+  const totalKm    = fuelLog[fuelLog.length - 1].odometer - fuelLog[0].odometer;
+  const totalSpent = fuelLog.reduce((s, f) => s + (f.totalCost || 0), 0);
+  const costPerKm  = totalKm > 0 ? +(totalSpent / totalKm).toFixed(2) : null;
+
+  // monthly spend
+  const byMonth = {};
+  fuelLog.forEach(f => {
+    const key = f.date.slice(0, 7);
+    byMonth[key] = (byMonth[key] || 0) + (f.totalCost || 0);
+  });
+  const months = Object.values(byMonth);
+  const monthlyAvg = months.length ? Math.round(months.reduce((a, b) => a + b, 0) / months.length) : null;
+
+  // avg days between fills
+  let totalDays = 0;
   for (let i = 1; i < fuelLog.length; i++) {
-    const km = fuelLog[i].odometer - fuelLog[i - 1].odometer;
-    fuelLog[i].mileage = (km > 0 && fuelLog[i].liters > 0)
-      ? +(km / fuelLog[i].liters).toFixed(1) : null;
+    totalDays += (new Date(fuelLog[i].date) - new Date(fuelLog[i-1].date)) / 86400000;
   }
-  if (fuelLog.length > 0) fuelLog[0].mileage = null;
+  const avgDays = fuelLog.length > 1 ? Math.round(totalDays / (fuelLog.length - 1)) : null;
+
+  return { costPerKm, monthlyAvg, avgDays, byMonth };
 }
 
 function renderFuelLog() {
-  const validMileages = fuelLog.map(f => f.mileage).filter(m => m && m > 0);
-  const avg     = validMileages.length
-    ? (validMileages.reduce((a, b) => a + b, 0) / validMileages.length).toFixed(1) : null;
-  const bestVal = validMileages.length ? Math.max(...validMileages) : null;
-  const bestEntry = fuelLog.find(f => f.mileage === bestVal);
+  const { costPerKm, monthlyAvg, avgDays } = computeFuelStats();
   const totalSpent  = fuelLog.reduce((s, f) => s + (f.totalCost || 0), 0);
   const totalLiters = fuelLog.reduce((s, f) => s + (f.liters || 0), 0);
-  const avgFill = fuelLog.length ? (totalLiters / fuelLog.length).toFixed(1) : null;
 
-  setText('fl-avg-mileage',  avg  ? avg  + ' km/L' : '—');
-  setText('fl-best-mileage', bestVal ? bestVal + ' km/L' : '—');
-  setText('fl-best-date',    bestEntry ? formatDate(bestEntry.date) : '—');
   setText('fl-total-spent',  '₹' + totalSpent.toLocaleString('en-IN'));
   setText('fl-total-liters', totalLiters.toFixed(1) + ' litres total');
-  setText('fl-avg-fill',     avgFill ? avgFill + ' L' : '—');
+  setText('fl-cost-per-km',  costPerKm ? '₹' + costPerKm : '—');
+  setText('fl-monthly-avg',  monthlyAvg ? '₹' + monthlyAvg.toLocaleString('en-IN') : '—');
+  setText('fl-avg-days',     avgDays ? avgDays + ' days' : '—');
 
-  renderFuelTable(avg);
-  renderFuelCharts(avg);
+  renderFuelTable();
+  renderFuelCharts();
 }
 
-function renderFuelTable(avg) {
+function renderFuelTable() {
   const tbody = document.getElementById('fuel-table-body');
   tbody.textContent = '';
 
   if (fuelLog.length === 0) {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.colSpan = 9;
+    td.colSpan = 8;
     td.className = 'empty-state';
     td.textContent = 'No fuel entries yet. Add your first fill-up!';
     tr.appendChild(td);
@@ -732,42 +738,26 @@ function renderFuelTable(avg) {
   }
 
   [...fuelLog].reverse().forEach(f => {
-    const mi     = f.mileage;
-    const miCls  = mi ? (mi >= parseFloat(avg) ? 'badge-green' : 'badge-amber') : '';
     const tr = document.createElement('tr');
-
-    const cells = [
+    [
       f.id || '',
       formatDate(f.date),
       (f.odometer || 0).toLocaleString() + ' km',
-      (f.liters   || 0) + ' L',
+      (f.liters || 0) + ' L',
       '₹' + (f.pricePerLiter || 0),
       '₹' + (f.totalCost || 0).toLocaleString(),
-    ];
-    cells.forEach(val => {
+    ].forEach(val => {
       const td = document.createElement('td');
       td.textContent = val;
       tr.appendChild(td);
     });
 
-    // mileage badge
-    const tdMi = document.createElement('td');
-    if (mi) {
-      tdMi.appendChild(makeBadge(miCls, mi + ' km/L'));
-    } else {
-      tdMi.textContent = '—';
-      tdMi.style.color = 'var(--muted)';
-    }
-    tr.appendChild(tdMi);
-
-    // station
     const tdSt = document.createElement('td');
     tdSt.textContent = f.station || '—';
     tdSt.style.color = 'var(--muted)';
     tdSt.style.fontSize = '0.8rem';
     tr.appendChild(tdSt);
 
-    // delete button
     const tdDel = document.createElement('td');
     const btn = document.createElement('button');
     btn.className = 'btn btn-danger btn-sm';
@@ -781,49 +771,20 @@ function renderFuelTable(avg) {
   });
 }
 
-let fuelMileageChart, fuelCostChart;
-function renderFuelCharts(avg) {
-  const entries = fuelLog.filter(f => f.mileage);
-  const labels  = entries.map(f => formatDate(f.date, true));
-  const avgLine = avg ? entries.map(() => parseFloat(avg)) : [];
-
-  if (fuelMileageChart) fuelMileageChart.destroy();
-  fuelMileageChart = new Chart(
-    document.getElementById('fuelMileageChart').getContext('2d'), {
+let fuelPriceChart, fuelMonthlyChart;
+function renderFuelCharts() {
+  // ── Fuel price trend ──────────────────────────────────────────────────────
+  if (fuelPriceChart) fuelPriceChart.destroy();
+  fuelPriceChart = new Chart(
+    document.getElementById('fuelPriceChart').getContext('2d'), {
     type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: 'km/L', data: entries.map(f => f.mileage),
-          borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.12)',
-          tension: 0.4, fill: true, pointRadius: 5, pointBackgroundColor: '#10b981' },
-        { label: 'Average', data: avgLine,
-          borderColor: 'rgba(99,102,241,0.6)', borderDash: [5, 5],
-          pointRadius: 0, fill: false }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { labels: { color: '#8892b0' } } },
-      scales: {
-        x: { ticks: { color: '#8892b0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-        y: { ticks: { color: '#8892b0', callback: v => v + ' km/L' },
-             grid: { color: 'rgba(255,255,255,0.05)' } }
-      }
-    }
-  });
-
-  if (fuelCostChart) fuelCostChart.destroy();
-  fuelCostChart = new Chart(
-    document.getElementById('fuelCostChart').getContext('2d'), {
-    type: 'bar',
     data: {
       labels: fuelLog.map(f => formatDate(f.date, true)),
       datasets: [{
-        label: '₹ Cost',
-        data: fuelLog.map(f => f.totalCost),
-        backgroundColor: 'rgba(245,158,11,0.7)',
-        borderColor: '#f59e0b', borderWidth: 2, borderRadius: 8,
+        label: '₹/L',
+        data: fuelLog.map(f => f.pricePerLiter),
+        borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)',
+        tension: 0.3, fill: true, pointRadius: 4, pointBackgroundColor: '#f59e0b',
       }]
     },
     options: {
@@ -832,6 +793,42 @@ function renderFuelCharts(avg) {
       scales: {
         x: { ticks: { color: '#8892b0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
         y: { ticks: { color: '#8892b0', callback: v => '₹' + v },
+             grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  // ── Monthly spend ─────────────────────────────────────────────────────────
+  const byMonth = {};
+  fuelLog.forEach(f => {
+    const key = f.date.slice(0, 7);
+    byMonth[key] = (byMonth[key] || 0) + (f.totalCost || 0);
+  });
+  const monthKeys   = Object.keys(byMonth).sort();
+  const monthLabels = monthKeys.map(k => {
+    const [y, m] = k.split('-');
+    return new Date(+y, +m - 1).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+  });
+
+  if (fuelMonthlyChart) fuelMonthlyChart.destroy();
+  fuelMonthlyChart = new Chart(
+    document.getElementById('fuelMonthlyChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: monthLabels,
+      datasets: [{
+        label: '₹ Spent',
+        data: monthKeys.map(k => byMonth[k]),
+        backgroundColor: 'rgba(99,102,241,0.7)',
+        borderColor: '#6366f1', borderWidth: 2, borderRadius: 8,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8892b0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#8892b0', callback: v => '₹' + v.toLocaleString('en-IN') },
              grid: { color: 'rgba(255,255,255,0.05)' } }
       }
     }
@@ -866,40 +863,45 @@ function renderDashboard() {
     }, 100);
   }
 
-  const validMileages = fuelLog.map(f => f.mileage).filter(m => m && m > 0);
-  const avg = validMileages.length
-    ? (validMileages.reduce((a, b) => a + b, 0) / validMileages.length).toFixed(1) : '—';
+  const { costPerKm } = computeFuelStats();
   const totalSpent = fuelLog.reduce((s, f) => s + (f.totalCost || 0), 0);
 
   setText('dash-fuel-count',   fuelLog.length);
   setText('dash-fuel-spent',   '₹' + totalSpent.toLocaleString('en-IN') + ' total');
-  setText('dash-avg-mileage',  avg);
+  setText('dash-cost-per-km',  costPerKm ? '₹' + costPerKm : '—');
 
-  renderDashMileageChart(avg);
+  renderDashMonthlyChart();
 }
 
-function renderDashMileageChart(avg) {
-  const entries = fuelLog.filter(f => f.mileage);
-  const ctx = document.getElementById('dashMileageChart').getContext('2d');
+function renderDashMonthlyChart() {
+  const byMonth = {};
+  fuelLog.forEach(f => {
+    const key = f.date.slice(0, 7);
+    byMonth[key] = (byMonth[key] || 0) + (f.totalCost || 0);
+  });
+  const monthKeys   = Object.keys(byMonth).sort();
+  const monthLabels = monthKeys.map(k => {
+    const [y, m] = k.split('-');
+    return new Date(+y, +m - 1).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+  });
+  const ctx = document.getElementById('dashMonthlyChart').getContext('2d');
   new Chart(ctx, {
-    type: 'line',
+    type: 'bar',
     data: {
-      labels: entries.map(f => formatDate(f.date, true)),
-      datasets: [
-        { label: 'km/L', data: entries.map(f => f.mileage),
-          borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.12)',
-          tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#10b981' },
-        { label: 'Avg', data: entries.map(() => parseFloat(avg) || 0),
-          borderColor: 'rgba(99,102,241,0.5)', borderDash: [5, 5],
-          pointRadius: 0, fill: false }
-      ]
+      labels: monthLabels,
+      datasets: [{
+        label: '₹ Spent',
+        data: monthKeys.map(k => byMonth[k]),
+        backgroundColor: 'rgba(245,158,11,0.7)',
+        borderColor: '#f59e0b', borderWidth: 2, borderRadius: 8,
+      }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { labels: { color: '#8892b0' } } },
+      plugins: { legend: { display: false } },
       scales: {
         x: { ticks: { color: '#8892b0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-        y: { ticks: { color: '#8892b0', callback: v => v + ' km/L' },
+        y: { ticks: { color: '#8892b0', callback: v => '₹' + v.toLocaleString('en-IN') },
              grid: { color: 'rgba(255,255,255,0.05)' } }
       }
     }
@@ -950,19 +952,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  document.getElementById('f-odometer')?.addEventListener('input', () => {
-    const odo   = parseFloat(document.getElementById('f-odometer').value);
-    const liters = parseFloat(document.getElementById('f-liters').value);
-    const lastOdo = fuelLog.length ? fuelLog[fuelLog.length - 1].odometer : null;
-    const prev  = document.getElementById('f-mileage-preview');
-    if (lastOdo && odo > lastOdo && liters > 0) {
-      document.getElementById('f-mileage-val').textContent =
-        ((odo - lastOdo) / liters).toFixed(1) + ' km/L';
-      prev.style.display = 'block';
-    } else {
-      prev.style.display = 'none';
-    }
-  });
 });
 
 async function addFuelEntry() {
@@ -990,7 +979,7 @@ async function addFuelEntry() {
     // No token: just update locally and show token prompt
     fuelLog.push(entry);
     fuelLog.sort((a, b) => new Date(a.date) - new Date(b.date));
-    computeMileages(); renderFuelLog();
+    renderFuelLog();
     promptForToken('Entry added locally. Set your GitHub token to save permanently.');
     return;
   }
@@ -1002,13 +991,13 @@ async function addFuelEntry() {
     content.sort((a, b) => new Date(a.date) - new Date(b.date));
     await ghPutFile('data/fuel-log.json', content, sha, 'Add fuel entry ' + date);
     fuelLog = content;
-    computeMileages(); renderFuelLog();
+    renderFuelLog();
     showSaving('✅ Saved to GitHub!', true);
   } catch (err) {
     showSaving('❌ Save failed: ' + err.message, true);
     fuelLog.push(entry);
     fuelLog.sort((a, b) => new Date(a.date) - new Date(b.date));
-    computeMileages(); renderFuelLog();
+    renderFuelLog();
   }
 }
 
@@ -1017,7 +1006,7 @@ async function deleteFuelEntry(id) {
   const updated = fuelLog.filter(f => f.id !== id);
 
   if (!hasToken()) {
-    fuelLog = updated; computeMileages(); renderFuelLog();
+    fuelLog = updated; renderFuelLog();
     promptForToken('Deleted locally. Set your GitHub token to persist.');
     return;
   }
@@ -1026,11 +1015,11 @@ async function deleteFuelEntry(id) {
   try {
     const { sha } = await ghGetFile('data/fuel-log.json');
     await ghPutFile('data/fuel-log.json', updated, sha, 'Delete fuel entry ' + id);
-    fuelLog = updated; computeMileages(); renderFuelLog();
+    fuelLog = updated; renderFuelLog();
     showSaving('✅ Deleted from GitHub!', true);
   } catch (err) {
     showSaving('❌ Delete failed: ' + err.message, true);
-    fuelLog = updated; computeMileages(); renderFuelLog();
+    fuelLog = updated; renderFuelLog();
   }
 }
 
