@@ -9,14 +9,14 @@
     "emoji": "🛵"
   },
   "services": [
-    { "seq": 1, "odometer": 535,   "kmRange": "500–750",     "scheduledDate": "2026-04-15", "actualDate": "2026-05-03", "laborCost": 0, "additionalCost": 0, "done": true,  "notes": "Free service #1" },
-    { "seq": 2, "odometer": 5750,  "kmRange": "5500–6000",   "scheduledDate": "2026-09-01", "actualDate": "",           "laborCost": 0, "additionalCost": 0, "done": false, "notes": "Free service #2" },
-    { "seq": 3, "odometer": 11750, "kmRange": "11500–12000", "scheduledDate": "2027-03-01", "actualDate": "",           "laborCost": 0, "additionalCost": 0, "done": false, "notes": "Free service #3" },
-    { "seq": 4, "odometer": 17750, "kmRange": "17500–18000", "scheduledDate": "2027-09-01", "actualDate": "",           "laborCost": 0, "additionalCost": 0, "done": false, "notes": "Paid service #4" },
-    { "seq": 5, "odometer": 23750, "kmRange": "23500–24000", "scheduledDate": "2028-03-01", "actualDate": "",           "laborCost": 0, "additionalCost": 0, "done": false, "notes": "Paid service #5" },
-    { "seq": 6, "odometer": 29750, "kmRange": "29500–30000", "scheduledDate": "2028-09-01", "actualDate": "",           "laborCost": 0, "additionalCost": 0, "done": false, "notes": "Paid service #6" },
-    { "seq": 7, "odometer": 35750, "kmRange": "35500–36000", "scheduledDate": "2029-03-01", "actualDate": "",           "laborCost": 0, "additionalCost": 0, "done": false, "notes": "Paid service #7" },
-    { "seq": 8, "odometer": 41750, "kmRange": "41500–42000", "scheduledDate": "2029-09-01", "actualDate": "",           "laborCost": 0, "additionalCost": 0, "done": false, "notes": "Paid service #8" },
-    { "seq": 9, "odometer": 47750, "kmRange": "47500–48000", "scheduledDate": "2030-03-01", "actualDate": "",           "laborCost": 0, "additionalCost": 0, "done": false, "notes": "Paid service #9" }
+    { "seq": 1, "odometer": 535,   "kmRange": "500–750",     "scheduledDate": "2026-04-15", "actualDate": "2026-05-03", "actualOdometer": 535,  "cost": 0, "done": true,  "notes": "Free service #1" },
+    { "seq": 2, "odometer": 5750,  "kmRange": "5500–6000",   "scheduledDate": "2026-09-01", "actualDate": "",           "actualOdometer": null, "cost": 0, "done": false, "notes": "Free service #2" },
+    { "seq": 3, "odometer": 11750, "kmRange": "11500–12000", "scheduledDate": "2027-03-01", "actualDate": "",           "actualOdometer": null, "cost": 0, "done": false, "notes": "Free service #3" },
+    { "seq": 4, "odometer": 17750, "kmRange": "17500–18000", "scheduledDate": "2027-09-01", "actualDate": "",           "actualOdometer": null, "cost": 0, "done": false, "notes": "Paid service #4" },
+    { "seq": 5, "odometer": 23750, "kmRange": "23500–24000", "scheduledDate": "2028-03-01", "actualDate": "",           "actualOdometer": null, "cost": 0, "done": false, "notes": "Paid service #5" },
+    { "seq": 6, "odometer": 29750, "kmRange": "29500–30000", "scheduledDate": "2028-09-01", "actualDate": "",           "actualOdometer": null, "cost": 0, "done": false, "notes": "Paid service #6" },
+    { "seq": 7, "odometer": 35750, "kmRange": "35500–36000", "scheduledDate": "2029-03-01", "actualDate": "",           "actualOdometer": null, "cost": 0, "done": false, "notes": "Paid service #7" },
+    { "seq": 8, "odometer": 41750, "kmRange": "41500–42000", "scheduledDate": "2029-09-01", "actualDate": "",           "actualOdometer": null, "cost": 0, "done": false, "notes": "Paid service #8" },
+    { "seq": 9, "odometer": 47750, "kmRange": "47500–48000", "scheduledDate": "2030-03-01", "actualDate": "",           "actualOdometer": null, "cost": 0, "done": false, "notes": "Paid service #9" }
   ]
 }

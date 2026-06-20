@@ -344,12 +344,12 @@
             <input type="date" id="svc-actual-date" />
           </div>
           <div class="form-group">
-            <label>Labor Cost (₹)</label>
-            <input type="number" id="svc-labor-cost" placeholder="e.g. 803" min="0" />
+            <label>Actual KM on Bike</label>
+            <input type="number" id="svc-actual-odo" placeholder="e.g. 8075" min="0" />
           </div>
           <div class="form-group">
-            <label>Additional Cost (₹)</label>
-            <input type="number" id="svc-add-cost" placeholder="e.g. 273" min="0" />
+            <label>Service Cost (₹)</label>
+            <input type="number" id="svc-cost" placeholder="e.g. 1076" min="0" />
           </div>
           <div class="form-group full">
             <label>Notes</label>
@@ -594,7 +594,7 @@ async function loadServiceData() {
     window._loadedBikeMeta = json.bike || {};
     serviceData = json.services.map(s => ({
       ...s,
-      totalCost: (s.laborCost || 0) + (s.additionalCost || 0),
+      totalCost: s.cost || 0,
     }));
     renderServiceTimeline();
     renderServiceCostChart();
@@ -680,10 +680,15 @@ function renderServiceTimeline() {
       const sp1 = document.createElement('span');
       sp1.textContent = `✅ Done: ${formatDate(s.actualDate)}`;
       meta.appendChild(sp1);
-      if (s.totalCost) {
+      if (s.actualOdometer) {
         const sp2 = document.createElement('span');
-        sp2.textContent = `💰 ₹${s.totalCost.toLocaleString()}`;
+        sp2.textContent = `🛣️ At: ${s.actualOdometer.toLocaleString()} km`;
         meta.appendChild(sp2);
+      }
+      if (s.totalCost) {
+        const sp3 = document.createElement('span');
+        sp3.textContent = `💰 ₹${s.totalCost.toLocaleString()}`;
+        meta.appendChild(sp3);
       }
     }
     content.appendChild(meta);
@@ -696,11 +701,20 @@ function renderServiceTimeline() {
     km.className = 'tl-km';
     km.textContent = s.odometer.toLocaleString() + ' km';
     right.appendChild(km);
-    if (s.done && s.totalCost) {
-      const cost = document.createElement('div');
-      cost.className = 'tl-cost';
-      cost.textContent = '₹' + s.totalCost.toLocaleString();
-      right.appendChild(cost);
+    if (s.done) {
+      if (s.actualOdometer) {
+        const odo = document.createElement('div');
+        odo.className = 'tl-cost';
+        odo.textContent = s.actualOdometer.toLocaleString() + ' km actual';
+        right.appendChild(odo);
+      }
+      if (s.totalCost) {
+        const cost = document.createElement('div');
+        cost.className = 'tl-cost';
+        cost.style.color = 'var(--accent3)';
+        cost.textContent = '₹' + s.totalCost.toLocaleString();
+        right.appendChild(cost);
+      }
     }
     item.appendChild(right);
 
@@ -1101,18 +1115,17 @@ function closeServiceModal() { document.getElementById('service-modal').classLis
 async function submitServiceUpdate() {
   const seq        = parseInt(document.getElementById('svc-seq').value);
   const actualDate = document.getElementById('svc-actual-date').value;
-  const laborCost  = parseFloat(document.getElementById('svc-labor-cost').value) || 0;
-  const addCost    = parseFloat(document.getElementById('svc-add-cost').value)   || 0;
+  const actualOdo  = parseFloat(document.getElementById('svc-actual-odo').value) || null;
+  const cost       = parseFloat(document.getElementById('svc-cost').value) || 0;
   const notes      = document.getElementById('svc-notes').value.trim().slice(0, 200);
   if (!seq) { alert('Select a service number first.'); return; }
 
   closeServiceModal();
 
   if (!hasToken()) {
-    // Update in-memory only
     const s = serviceData.find(x => x.seq === seq);
-    if (s) { s.actualDate = actualDate; s.laborCost = laborCost; s.additionalCost = addCost;
-             s.totalCost = laborCost + addCost; s.done = !!actualDate; s.notes = notes; }
+    if (s) { s.actualDate = actualDate; s.actualOdometer = actualOdo;
+             s.cost = cost; s.totalCost = cost; s.done = !!actualDate; s.notes = notes; }
     renderServiceTimeline(); renderServiceCostChart();
     promptForToken('Updated locally. Set your GitHub token to save permanently.');
     return;
@@ -1122,10 +1135,10 @@ async function submitServiceUpdate() {
   try {
     const { content: json, sha } = await ghGetFile(BIKES[activeBike].serviceFile);
     const s = json.services.find(x => x.seq === seq);
-    if (s) { s.actualDate = actualDate; s.laborCost = laborCost;
-             s.additionalCost = addCost; s.done = !!actualDate; s.notes = notes; }
+    if (s) { s.actualDate = actualDate; s.actualOdometer = actualOdo;
+             s.cost = cost; s.done = !!actualDate; s.notes = notes; }
     await ghPutFile(BIKES[activeBike].serviceFile, json, sha, 'Update service #' + seq);
-    serviceData = json.services.map(s => ({ ...s, totalCost: (s.laborCost||0)+(s.additionalCost||0) }));
+    serviceData = json.services.map(s => ({ ...s, totalCost: s.cost || 0 }));
     renderServiceTimeline(); renderServiceCostChart();
     showSaving('✅ Service updated on GitHub!', true);
   } catch (err) {

@@ -8,15 +8,15 @@
     "emoji": "🏍️"
   },
   "services": [
-    { "seq": 1,  "odometer": 1000,  "scheduledDate": "2024-12-15", "actualDate": "2024-01-03", "laborCost": 803,  "additionalCost": 273,  "done": true,  "notes": "" },
-    { "seq": 2,  "odometer": 4000,  "scheduledDate": "2025-04-14", "actualDate": "2025-04-02", "laborCost": 3214, "additionalCost": 0,    "done": true,  "notes": "" },
-    { "seq": 3,  "odometer": 7000,  "scheduledDate": "2025-08-12", "actualDate": "2025-08-12", "laborCost": 5603, "additionalCost": 0,    "done": true,  "notes": "" },
-    { "seq": 4,  "odometer": 10000, "scheduledDate": "2025-12-09", "actualDate": "2025-12-30", "laborCost": 8075, "additionalCost": 0,    "done": true,  "notes": "" },
-    { "seq": 5,  "odometer": 13000, "scheduledDate": "2026-04-08", "actualDate": "",           "laborCost": 0,    "additionalCost": 0,    "done": false, "notes": "" },
-    { "seq": 6,  "odometer": 16000, "scheduledDate": "2026-08-06", "actualDate": "",           "laborCost": 0,    "additionalCost": 0,    "done": false, "notes": "" },
-    { "seq": 7,  "odometer": 19000, "scheduledDate": "2026-12-04", "actualDate": "",           "laborCost": 0,    "additionalCost": 0,    "done": false, "notes": "" },
-    { "seq": 8,  "odometer": 22000, "scheduledDate": "2027-04-03", "actualDate": "",           "laborCost": 0,    "additionalCost": 0,    "done": false, "notes": "" },
-    { "seq": 9,  "odometer": 25000, "scheduledDate": "2027-08-01", "actualDate": "",           "laborCost": 0,    "additionalCost": 0,    "done": false, "notes": "" },
-    { "seq": 10, "odometer": 28000, "scheduledDate": "2027-11-29", "actualDate": "",           "laborCost": 0,    "additionalCost": 0,    "done": false, "notes": "" }
+    { "seq": 1,  "odometer": 1000,  "scheduledDate": "2024-12-15", "actualDate": "2024-01-03", "actualOdometer": 803,  "cost": 1076,   "done": true,  "notes": "" },
+    { "seq": 2,  "odometer": 4000,  "scheduledDate": "2025-04-14", "actualDate": "2025-04-02", "actualOdometer": 3214, "cost": 1239,   "done": true,  "notes": "" },
+    { "seq": 3,  "odometer": 7000,  "scheduledDate": "2025-08-12", "actualDate": "2025-08-12", "actualOdometer": 5603, "cost": 1565,   "done": true,  "notes": "" },
+    { "seq": 4,  "odometer": 10000, "scheduledDate": "2025-12-09", "actualDate": "2025-12-30", "actualOdometer": 8075, "cost": 2343.4, "done": true,  "notes": "" },
+    { "seq": 5,  "odometer": 13000, "scheduledDate": "2026-04-08", "actualDate": "",           "actualOdometer": null, "cost": 0,      "done": false, "notes": "" },
+    { "seq": 6,  "odometer": 16000, "scheduledDate": "2026-08-06", "actualDate": "",           "actualOdometer": null, "cost": 0,      "done": false, "notes": "" },
+    { "seq": 7,  "odometer": 19000, "scheduledDate": "2026-12-04", "actualDate": "",           "actualOdometer": null, "cost": 0,      "done": false, "notes": "" },
+    { "seq": 8,  "odometer": 22000, "scheduledDate": "2027-04-03", "actualDate": "",           "actualOdometer": null, "cost": 0,      "done": false, "notes": "" },
+    { "seq": 9,  "odometer": 25000, "scheduledDate": "2027-08-01", "actualDate": "",           "actualOdometer": null, "cost": 0,      "done": false, "notes": "" },
+    { "seq": 10, "odometer": 28000, "scheduledDate": "2027-11-29", "actualDate": "",           "actualOdometer": null, "cost": 0,      "done": false, "notes": "" }
   ]
 }
