@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bike Tracker — Yamaha FZS FI V4</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3354;
+      --accent: #6366f1;
+      --accent2: #10b981;
+      --accent3: #f59e0b;
+      --danger: #ef4444;
+      --text: #e2e8f0;
+      --muted: #8892b0;
+      --card-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    nav {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 2rem; display: flex; align-items: center; justify-content: space-between;
+      height: 64px; position: sticky; top: 0; z-index: 100;
+    }
+    .nav-brand { display: flex; align-items: center; gap: 12px; }
+    .nav-brand .logo { font-size: 1.5rem; }
+    .nav-brand h1 { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .nav-brand p { font-size: 0.75rem; color: var(--muted); }
+    .nav-tabs { display: flex; gap: 4px; }
+    .nav-tab {
+      padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 0.875rem;
+      font-weight: 500; border: none; background: transparent; color: var(--muted);
+      transition: all 0.2s;
+    }
+    .nav-tab.active { background: var(--accent); color: #fff; }
+    .nav-tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.25rem 1.5rem; box-shadow: var(--card-shadow);
+    }
+    .card-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    .card-value { font-size: 1.75rem; font-weight: 700; }
+    .card-sub { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+    .card.accent { border-color: var(--accent); background: linear-gradient(135deg,#1a1d27,#1e2040); }
+    .card.green  { border-color: var(--accent2); background: linear-gradient(135deg,#1a1d27,#0f2d25); }
+    .card.amber  { border-color: var(--accent3); background: linear-gradient(135deg,#1a1d27,#2d2310); }
+    .card.red    { border-color: var(--danger); background: linear-gradient(135deg,#1a1d27,#2d1010); }
+
+    .section { margin-bottom: 2rem; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .section-title { font-size: 1.1rem; font-weight: 600; }
+
+    .chart-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.5rem; box-shadow: var(--card-shadow);
+    }
+    .chart-box canvas { max-height: 300px; }
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 768px) { .charts-row { grid-template-columns: 1fr; } .nav-tabs { gap: 2px; } .nav-tab { padding: 8px 12px; font-size: 0.8rem; } }
+
+    .table-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden; box-shadow: var(--card-shadow);
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    th { background: var(--surface2); padding: 12px 16px; text-align: left; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    td { padding: 12px 16px; font-size: 0.875rem; border-top: 1px solid var(--border); }
+    tr:hover td { background: var(--surface2); }
+
+    .badge {
+      display: inline-flex; align-items: center; padding: 3px 10px;
+      border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+    }
+    .badge-green { background: rgba(16,185,129,0.15); color: #10b981; }
+    .badge-amber { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .badge-red   { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .badge-blue  { background: rgba(99,102,241,0.15); color: #818cf8; }
+
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .tl-item {
+      display: flex; gap: 1rem; align-items: flex-start;
+      padding: 1rem 1.5rem; border-top: 1px solid var(--border);
+    }
+    .tl-item:first-child { border-top: none; }
+    .tl-dot {
+      width: 36px; height: 36px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 0.8rem; font-weight: 700;
+    }
+    .tl-dot.done   { background: rgba(16,185,129,0.2);  color: #10b981; border: 2px solid #10b981; }
+    .tl-dot.next   { background: rgba(99,102,241,0.2);  color: #818cf8; border: 2px solid #818cf8; }
+    .tl-dot.soon   { background: rgba(245,158,11,0.2);  color: #f59e0b; border: 2px solid #f59e0b; }
+    .tl-dot.future { background: rgba(255,255,255,0.05);color: var(--muted); border: 2px solid var(--border); }
+    .tl-content { flex: 1; }
+    .tl-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+    .tl-meta  { font-size: 0.78rem; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; }
+    .tl-right { text-align: right; flex-shrink: 0; }
+    .tl-km   { font-size: 1.1rem; font-weight: 700; }
+    .tl-cost { font-size: 0.78rem; color: var(--muted); }
+
+    .btn {
+      padding: 10px 20px; border-radius: 10px; font-size: 0.875rem; font-weight: 600;
+      cursor: pointer; border: none; transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #4f52d9; }
+    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--border); }
+    .btn-sm { padding: 6px 14px; font-size: 0.8rem; border-radius: 8px; }
+    .btn-danger { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 200; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 2rem; width: 90%; max-width: 520px; box-shadow: var(--card-shadow);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { font-size: 1.2rem; margin-bottom: 1.5rem; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+    input, select, textarea {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; color: var(--text); font-size: 0.875rem; width: 100%;
+      transition: border-color 0.2s; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 1.5rem; }
+
+    .countdown { display: flex; gap: 8px; flex-wrap: wrap; }
+    .countdown-unit {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 16px; text-align: center; min-width: 64px;
+    }
+    .countdown-num { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+    .countdown-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; }
+
+    .bike-header {
+      background: linear-gradient(135deg, var(--surface), var(--surface2));
+      border: 1px solid var(--border); border-radius: 20px;
+      padding: 2rem; margin-bottom: 2rem;
+      display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;
+    }
+    .bike-emoji { font-size: 4rem; }
+    .bike-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+    .bike-sub   { color: var(--muted); font-size: 0.875rem; }
+    .bike-meta  { display: flex; gap: 1.5rem; margin-top: 1rem; flex-wrap: wrap; }
+    .bike-meta-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+    .bike-meta-value { font-size: 0.9rem; font-weight: 600; }
+
+    .loading { text-align: center; padding: 3rem; color: var(--muted); font-size: 0.9rem; }
+    .spinner {
+      display: inline-block; width: 24px; height: 24px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state { text-align: center; padding: 3rem; color: var(--muted); }
+
+    .progress-bar  { background: var(--surface2); border-radius: 100px; height: 8px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg,var(--accent),var(--accent2)); transition: width 0.6s ease; }
+
+    .export-notice {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem; margin-bottom: 1rem; font-size: 0.82rem; color: var(--muted);
+    }
+    code { background: var(--surface); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <span class="logo">🏍️</span>
+    <div>
+      <h1>Bike Tracker</h1>
+      <p>Yamaha FZS FI V4</p>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="dashboard" onclick="showPage(this)">Dashboard</button>
+    <button class="nav-tab" data-page="service" onclick="showPage(this)">Service</button>
+    <button class="nav-tab" data-page="fuel" onclick="showPage(this)">Fuel Log</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div class="bike-header">
+      <span class="bike-emoji">🏍️</span>
+      <div>
+        <div class="bike-title">Yamaha FZS FI V4</div>
+        <div class="bike-sub">Ice Fluo-Vermillion · Registered 2024</div>
+        <div class="bike-meta">
+          <div class="bike-meta-item">
+            <div class="bike-meta-label">Insurance</div>
+            <div class="bike-meta-value">United India Insurance</div>
+          </div>
+          <div class="bike-meta-item">
+            <div class="bike-meta-label">Policy No</div>
+            <div class="bike-meta-value">0914013124P112863361</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card accent">
+        <div class="card-label">Next Service</div>
+        <div class="card-value" id="dash-next-km">—</div>
+        <div class="card-sub" id="dash-next-date">Loading…</div>
+      </div>
+      <div class="card green">
+        <div class="card-label">Services Done</div>
+        <div class="card-value" id="dash-done">—</div>
+        <div class="card-sub">of 10 scheduled</div>
+      </div>
+      <div class="card amber">
+        <div class="card-label">Fuel Entries</div>
+        <div class="card-value" id="dash-fuel-count">—</div>
+        <div class="card-sub" id="dash-fuel-spent">loading…</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Avg Mileage</div>
+        <div class="card-value" id="dash-avg-mileage">—</div>
+        <div class="card-sub">km / litre</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header"><span class="section-title">Next Service Countdown</span></div>
+      <div class="chart-box">
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;" id="next-service-label">Loading…</p>
+        <div class="countdown" id="next-service-countdown"></div>
+        <div style="margin-top:1.5rem;">
+          <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:6px;">
+            <span id="progress-start">—</span>
+            <span id="progress-pct">—%</span>
+            <span id="progress-end">—</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-box section">
+        <div class="section-title" style="margin-bottom:1rem;">Service Costs (₹)</div>
+        <canvas id="serviceCostChart"></canvas>
+      </div>
+      <div class="chart-box section">
+        <div class="section-title" style="margin-bottom:1rem;">Fuel Efficiency (km/L)</div>
+        <canvas id="dashMileageChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SERVICE -->
+  <div id="page-service" class="page">
+    <div class="section-header">
+      <span class="section-title" style="font-size:1.3rem;">Service Schedule</span>
+      <button class="btn btn-primary" onclick="openServiceModal()">✏️ Update Service</button>
+    </div>
+
+    <div id="service-loading" class="loading">
+      <div class="spinner"></div><br>Fetching service data from Google Sheets…
+    </div>
+    <div id="service-content" style="display:none">
+      <div class="cards" style="margin-bottom:1.5rem;">
+        <div class="card green">
+          <div class="card-label">Completed</div>
+          <div class="card-value" id="svc-done-count">—</div>
+          <div class="card-sub">services done</div>
+        </div>
+        <div class="card accent">
+          <div class="card-label">Pending</div>
+          <div class="card-value" id="svc-pending-count">—</div>
+          <div class="card-sub">upcoming services</div>
+        </div>
+        <div class="card amber">
+          <div class="card-label">Total Spent</div>
+          <div class="card-value" id="svc-total-cost">—</div>
+          <div class="card-sub">on service</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Next At</div>
+          <div class="card-value" id="svc-next-km2">—</div>
+          <div class="card-sub" id="svc-next-date2">—</div>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="timeline" id="service-timeline"></div>
+      </div>
+    </div>
+
+    <!-- Service update modal -->
+    <div class="modal-overlay" id="service-modal">
+      <div class="modal">
+        <h2>✏️ Update Service Entry</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Service #</label>
+            <select id="svc-seq"></select>
+          </div>
+          <div class="form-group">
+            <label>Actual Date</label>
+            <input type="date" id="svc-actual-date" />
+          </div>
+          <div class="form-group">
+            <label>Labor Cost (₹)</label>
+            <input type="number" id="svc-labor-cost" placeholder="e.g. 803" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Additional Cost (₹)</label>
+            <input type="number" id="svc-add-cost" placeholder="e.g. 273" min="0" />
+          </div>
+          <div class="form-group full">
+            <label>Notes</label>
+            <input type="text" id="svc-notes" placeholder="Parts replaced, mechanic, etc." maxlength="200" />
+          </div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:1rem;margin-top:1rem;font-size:0.8rem;color:var(--muted);">
+          💡 Copies a snippet you can paste into your Google Sheet.
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-ghost" onclick="closeServiceModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="submitServiceUpdate()">📋 Copy Snippet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FUEL LOG -->
+  <div id="page-fuel" class="page">
+    <div class="section-header">
+      <span class="section-title" style="font-size:1.3rem;">Fuel Log</span>
+      <button class="btn btn-primary" onclick="openFuelModal()">+ Add Entry</button>
+    </div>
+
+    <div class="cards" style="margin-bottom:1.5rem;">
+      <div class="card green">
+        <div class="card-label">Avg Mileage</div>
+        <div class="card-value" id="fl-avg-mileage">—</div>
+        <div class="card-sub">km / litre</div>
+      </div>
+      <div class="card accent">
+        <div class="card-label">Best Mileage</div>
+        <div class="card-value" id="fl-best-mileage">—</div>
+        <div class="card-sub" id="fl-best-date">—</div>
+      </div>
+      <div class="card amber">
+        <div class="card-label">Total Fuel Spent</div>
+        <div class="card-value" id="fl-total-spent">—</div>
+        <div class="card-sub" id="fl-total-liters">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Avg Fill</div>
+        <div class="card-value" id="fl-avg-fill">—</div>
+        <div class="card-sub">litres per fill-up</div>
+      </div>
+    </div>
+
+    <div class="charts-row section">
+      <div class="chart-box">
+        <div class="section-title" style="margin-bottom:1rem;">Mileage Trend (km/L)</div>
+        <canvas id="fuelMileageChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <div class="section-title" style="margin-bottom:1rem;">Fuel Cost per Fill-up (₹)</div>
+        <canvas id="fuelCostChart"></canvas>
+      </div>
+    </div>
+
+    <div id="export-notice" class="export-notice" style="display:none">
+      ✅ New entries saved locally. Export JSON and replace <code>data/fuel-log.json</code> in your GitHub repo to persist permanently.
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="exportFuelLog()">📋 Export JSON</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title" style="margin-bottom:1rem;">All Entries</div>
+      <div class="table-box">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Date</th><th>Odometer</th><th>Litres</th>
+                <th>₹/L</th><th>Total (₹)</th><th>Mileage</th><th>Station</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="fuel-table-body">
+              <tr><td colspan="9" class="loading">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Fuel Modal -->
+    <div class="modal-overlay" id="fuel-modal">
+      <div class="modal">
+        <h2>⛽ Add Fuel Entry</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Date *</label>
+            <input type="date" id="f-date" />
+          </div>
+          <div class="form-group">
+            <label>Odometer (km) *</label>
+            <input type="number" id="f-odometer" placeholder="e.g. 8250" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Litres *</label>
+            <input type="number" id="f-liters" placeholder="e.g. 10.5" step="0.01" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Price per Litre (₹) *</label>
+            <input type="number" id="f-price" placeholder="e.g. 105.62" step="0.01" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Total Cost (₹)</label>
+            <input type="number" id="f-total" placeholder="Auto-calculated" readonly style="opacity:0.6" />
+          </div>
+          <div class="form-group">
+            <label>Station</label>
+            <select id="f-station">
+              <option>HP Petrol</option>
+              <option>Indian Oil</option>
+              <option>Bharat Petroleum</option>
+              <option>Shell</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Notes</label>
+            <input type="text" id="f-notes" placeholder="Optional…" maxlength="200" />
+          </div>
+        </div>
+        <div id="f-mileage-preview" style="display:none;background:var(--surface2);border-radius:10px;padding:1rem;margin-top:1rem;font-size:0.85rem;">
+          Estimated mileage: <strong id="f-mileage-val">—</strong> km/L
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-ghost" onclick="closeFuelModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="addFuelEntry()">Save Entry</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── Sanitise a string for safe DOM text insertion ──────────────────────────
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+// ── DOM helpers ─────────────────────────────────────────────────────────────
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function makeBadge(cls, text) {
+  const span = document.createElement('span');
+  span.className = 'badge ' + cls;
+  span.textContent = text;
+  return span;
+}
+
+let serviceData = [];
+let fuelLog     = [];
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function showPage(btn) {
+  const id = btn.dataset.page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Bootstrap ───────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  await Promise.all([loadServiceData(), loadFuelLog()]);
+  renderDashboard();
+});
+
+// ── Service data ─────────────────────────────────────────────────────────────
+async function loadServiceData() {
+  try {
+    const res  = await fetch('./data/service.json');
+    const json = await res.json();
+    serviceData = json.services.map(s => ({
+      ...s,
+      totalCost: (s.laborCost || 0) + (s.additionalCost || 0),
+    }));
+    renderServiceTimeline();
+    renderServiceCostChart();
+  } catch (_) {
+    document.getElementById('service-loading').textContent =
+      '⚠️ Could not load service data. Check that data/service.json exists.';
+  }
+}
+
+
+function renderServiceTimeline() {
+  document.getElementById('service-loading').style.display = 'none';
+  document.getElementById('service-content').style.display = 'block';
+
+  const done    = serviceData.filter(s => s.done);
+  const pending = serviceData.filter(s => !s.done);
+  const next    = pending[0];
+  const total   = done.reduce((s, r) => s + r.totalCost, 0);
+
+  setText('svc-done-count',    done.length);
+  setText('svc-pending-count', pending.length);
+  setText('svc-total-cost',    '₹' + total.toLocaleString('en-IN'));
+  setText('svc-next-km2',  next ? next.odometer.toLocaleString() + ' km' : '—');
+  setText('svc-next-date2', next ? formatDate(next.scheduledDate) : '—');
+
+  // populate service-update select
+  const sel = document.getElementById('svc-seq');
+  sel.textContent = '';
+  const blank = document.createElement('option');
+  blank.value   = '';
+  blank.textContent = 'Select service';
+  sel.appendChild(blank);
+  serviceData.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value       = s.seq;
+    opt.textContent = `#${s.seq} — ${s.odometer.toLocaleString()} km`;
+    sel.appendChild(opt);
+  });
+
+  const tl = document.getElementById('service-timeline');
+  tl.textContent = '';
+
+  serviceData.forEach((s, i) => {
+    const isNext  = !s.done && (i === 0 || serviceData[i - 1].done);
+    const dLeft   = s.scheduledDate ? daysUntil(s.scheduledDate) : null;
+    const isSoon  = !s.done && dLeft !== null && dLeft <= 60 && dLeft > 0;
+    const dotCls  = s.done ? 'done' : isNext ? 'next' : isSoon ? 'soon' : 'future';
+
+    const item = document.createElement('div');
+    item.className = 'tl-item';
+
+    // dot
+    const dot = document.createElement('div');
+    dot.className = 'tl-dot ' + dotCls;
+    dot.textContent = s.seq;
+    item.appendChild(dot);
+
+    // content
+    const content = document.createElement('div');
+    content.className = 'tl-content';
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'tl-title';
+    titleRow.textContent = `Service #${s.seq} — ${s.odometer.toLocaleString()} km `;
+    if (s.done)       titleRow.appendChild(makeBadge('badge-green', '✓ Done'));
+    else if (isNext)  titleRow.appendChild(makeBadge('badge-blue',  '← Next'));
+    else if (isSoon)  titleRow.appendChild(makeBadge('badge-amber', 'In ' + dLeft + 'd'));
+    else              titleRow.appendChild(makeBadge('',            'Upcoming'));
+    content.appendChild(titleRow);
+
+    const meta = document.createElement('div');
+    meta.className = 'tl-meta';
+    meta.textContent = `📅 Scheduled: ${formatDate(s.scheduledDate)}`;
+    if (s.done) {
+      const sp1 = document.createElement('span');
+      sp1.textContent = `✅ Done: ${formatDate(s.actualDate)}`;
+      meta.appendChild(sp1);
+      if (s.totalCost) {
+        const sp2 = document.createElement('span');
+        sp2.textContent = `💰 ₹${s.totalCost.toLocaleString()}`;
+        meta.appendChild(sp2);
+      }
+    }
+    content.appendChild(meta);
+    item.appendChild(content);
+
+    // right
+    const right = document.createElement('div');
+    right.className = 'tl-right';
+    const km = document.createElement('div');
+    km.className = 'tl-km';
+    km.textContent = s.odometer.toLocaleString() + ' km';
+    right.appendChild(km);
+    if (s.done && s.totalCost) {
+      const cost = document.createElement('div');
+      cost.className = 'tl-cost';
+      cost.textContent = '₹' + s.totalCost.toLocaleString();
+      right.appendChild(cost);
+    }
+    item.appendChild(right);
+
+    tl.appendChild(item);
+  });
+}
+
+function renderServiceCostChart() {
+  const done = serviceData.filter(s => s.done && s.totalCost > 0);
+  const ctx  = document.getElementById('serviceCostChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: done.map(s => '#' + s.seq + ' (' + (s.odometer / 1000).toFixed(0) + 'k)'),
+      datasets: [{
+        label: 'Service Cost (₹)',
+        data: done.map(s => s.totalCost),
+        backgroundColor: 'rgba(99,102,241,0.7)',
+        borderColor: '#6366f1', borderWidth: 2, borderRadius: 8,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8892b0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#8892b0', callback: v => '₹' + v.toLocaleString('en-IN') },
+             grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+}
+
+// ── Fuel log ─────────────────────────────────────────────────────────────────
+async function loadFuelLog() {
+  try {
+    const res  = await fetch('./data/fuel-log.json');
+    const base = await res.json();
+    const local = safeParseJSON(localStorage.getItem('fuel-log-local'), []);
+    fuelLog = [...base, ...local].sort((a, b) => new Date(a.date) - new Date(b.date));
+  } catch (_) {
+    fuelLog = safeParseJSON(localStorage.getItem('fuel-log-local'), []);
+  }
+  computeMileages();
+  renderFuelLog();
+}
+
+function safeParseJSON(str, fallback) {
+  try { return JSON.parse(str) || fallback; } catch { return fallback; }
+}
+
+function computeMileages() {
+  for (let i = 1; i < fuelLog.length; i++) {
+    const km = fuelLog[i].odometer - fuelLog[i - 1].odometer;
+    fuelLog[i].mileage = (km > 0 && fuelLog[i].liters > 0)
+      ? +(km / fuelLog[i].liters).toFixed(1) : null;
+  }
+  if (fuelLog.length > 0) fuelLog[0].mileage = null;
+}
+
+function renderFuelLog() {
+  const validMileages = fuelLog.map(f => f.mileage).filter(m => m && m > 0);
+  const avg     = validMileages.length
+    ? (validMileages.reduce((a, b) => a + b, 0) / validMileages.length).toFixed(1) : null;
+  const bestVal = validMileages.length ? Math.max(...validMileages) : null;
+  const bestEntry = fuelLog.find(f => f.mileage === bestVal);
+  const totalSpent  = fuelLog.reduce((s, f) => s + (f.totalCost || 0), 0);
+  const totalLiters = fuelLog.reduce((s, f) => s + (f.liters || 0), 0);
+  const avgFill = fuelLog.length ? (totalLiters / fuelLog.length).toFixed(1) : null;
+
+  setText('fl-avg-mileage',  avg  ? avg  + ' km/L' : '—');
+  setText('fl-best-mileage', bestVal ? bestVal + ' km/L' : '—');
+  setText('fl-best-date',    bestEntry ? formatDate(bestEntry.date) : '—');
+  setText('fl-total-spent',  '₹' + totalSpent.toLocaleString('en-IN'));
+  setText('fl-total-liters', totalLiters.toFixed(1) + ' litres total');
+  setText('fl-avg-fill',     avgFill ? avgFill + ' L' : '—');
+
+  renderFuelTable(avg);
+  renderFuelCharts(avg);
+}
+
+function renderFuelTable(avg) {
+  const tbody = document.getElementById('fuel-table-body');
+  tbody.textContent = '';
+
+  if (fuelLog.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 9;
+    td.className = 'empty-state';
+    td.textContent = 'No fuel entries yet. Add your first fill-up!';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
+
+  [...fuelLog].reverse().forEach(f => {
+    const mi     = f.mileage;
+    const miCls  = mi ? (mi >= parseFloat(avg) ? 'badge-green' : 'badge-amber') : '';
+    const tr = document.createElement('tr');
+
+    const cells = [
+      f.id || '',
+      formatDate(f.date),
+      (f.odometer || 0).toLocaleString() + ' km',
+      (f.liters   || 0) + ' L',
+      '₹' + (f.pricePerLiter || 0),
+      '₹' + (f.totalCost || 0).toLocaleString(),
+    ];
+    cells.forEach(val => {
+      const td = document.createElement('td');
+      td.textContent = val;
+      tr.appendChild(td);
+    });
+
+    // mileage badge
+    const tdMi = document.createElement('td');
+    if (mi) {
+      tdMi.appendChild(makeBadge(miCls, mi + ' km/L'));
+    } else {
+      tdMi.textContent = '—';
+      tdMi.style.color = 'var(--muted)';
+    }
+    tr.appendChild(tdMi);
+
+    // station
+    const tdSt = document.createElement('td');
+    tdSt.textContent = f.station || '—';
+    tdSt.style.color = 'var(--muted)';
+    tdSt.style.fontSize = '0.8rem';
+    tr.appendChild(tdSt);
+
+    // delete button
+    const tdDel = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-danger btn-sm';
+    btn.style.cssText = 'padding:4px 8px;font-size:0.7rem';
+    btn.textContent = '✕';
+    btn.addEventListener('click', () => deleteFuelEntry(f.id));
+    tdDel.appendChild(btn);
+    tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  });
+}
+
+let fuelMileageChart, fuelCostChart;
+function renderFuelCharts(avg) {
+  const entries = fuelLog.filter(f => f.mileage);
+  const labels  = entries.map(f => formatDate(f.date, true));
+  const avgLine = avg ? entries.map(() => parseFloat(avg)) : [];
+
+  if (fuelMileageChart) fuelMileageChart.destroy();
+  fuelMileageChart = new Chart(
+    document.getElementById('fuelMileageChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'km/L', data: entries.map(f => f.mileage),
+          borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.12)',
+          tension: 0.4, fill: true, pointRadius: 5, pointBackgroundColor: '#10b981' },
+        { label: 'Average', data: avgLine,
+          borderColor: 'rgba(99,102,241,0.6)', borderDash: [5, 5],
+          pointRadius: 0, fill: false }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#8892b0' } } },
+      scales: {
+        x: { ticks: { color: '#8892b0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#8892b0', callback: v => v + ' km/L' },
+             grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  if (fuelCostChart) fuelCostChart.destroy();
+  fuelCostChart = new Chart(
+    document.getElementById('fuelCostChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: fuelLog.map(f => formatDate(f.date, true)),
+      datasets: [{
+        label: '₹ Cost',
+        data: fuelLog.map(f => f.totalCost),
+        backgroundColor: 'rgba(245,158,11,0.7)',
+        borderColor: '#f59e0b', borderWidth: 2, borderRadius: 8,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8892b0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#8892b0', callback: v => '₹' + v },
+             grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const done    = serviceData.filter(s => s.done);
+  const pending = serviceData.filter(s => !s.done);
+  const next    = pending[0];
+
+  setText('dash-done', done.length);
+  if (next) {
+    setText('dash-next-km',   next.odometer.toLocaleString() + ' km');
+    setText('dash-next-date', 'Due ' + formatDate(next.scheduledDate));
+
+    const dLeft  = daysUntil(next.scheduledDate);
+    const prev   = done[done.length - 1];
+    const span   = prev ? daysUntil(next.scheduledDate, prev.actualDate) : 120;
+    const pct    = Math.max(0, Math.min(100, ((span - dLeft) / span * 100) | 0));
+
+    setText('next-service-label',
+      `Next: Service #${next.seq} at ${next.odometer.toLocaleString()} km — Due ${formatDate(next.scheduledDate)} (${dLeft > 0 ? dLeft + ' days away' : 'OVERDUE'})`);
+    renderCountdown(dLeft);
+    setText('progress-start', prev ? formatDate(prev.actualDate) : '—');
+    setText('progress-end',   formatDate(next.scheduledDate));
+    setText('progress-pct',   pct + '%');
+    setTimeout(() => {
+      const el = document.getElementById('progress-fill');
+      if (el) el.style.width = pct + '%';
+    }, 100);
+  }
+
+  const validMileages = fuelLog.map(f => f.mileage).filter(m => m && m > 0);
+  const avg = validMileages.length
+    ? (validMileages.reduce((a, b) => a + b, 0) / validMileages.length).toFixed(1) : '—';
+  const totalSpent = fuelLog.reduce((s, f) => s + (f.totalCost || 0), 0);
+
+  setText('dash-fuel-count',   fuelLog.length);
+  setText('dash-fuel-spent',   '₹' + totalSpent.toLocaleString('en-IN') + ' total');
+  setText('dash-avg-mileage',  avg);
+
+  renderDashMileageChart(avg);
+}
+
+function renderDashMileageChart(avg) {
+  const entries = fuelLog.filter(f => f.mileage);
+  const ctx = document.getElementById('dashMileageChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: entries.map(f => formatDate(f.date, true)),
+      datasets: [
+        { label: 'km/L', data: entries.map(f => f.mileage),
+          borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.12)',
+          tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#10b981' },
+        { label: 'Avg', data: entries.map(() => parseFloat(avg) || 0),
+          borderColor: 'rgba(99,102,241,0.5)', borderDash: [5, 5],
+          pointRadius: 0, fill: false }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#8892b0' } } },
+      scales: {
+        x: { ticks: { color: '#8892b0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#8892b0', callback: v => v + ' km/L' },
+             grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+}
+
+function renderCountdown(days) {
+  const el = document.getElementById('next-service-countdown');
+  el.textContent = '';
+  if (days <= 0) {
+    el.appendChild(makeBadge('badge-red', '⚠️ Service Overdue!'));
+    return;
+  }
+  [['Months', Math.floor(days / 30)],
+   ['Weeks',  Math.floor((days % 30) / 7)],
+   ['Days',   days % 7]
+  ].forEach(([label, val]) => {
+    const unit  = document.createElement('div');
+    unit.className = 'countdown-unit';
+    const num   = document.createElement('div');
+    num.className = 'countdown-num';
+    num.textContent = val;
+    const lbl   = document.createElement('div');
+    lbl.className = 'countdown-label';
+    lbl.textContent = label;
+    unit.appendChild(num);
+    unit.appendChild(lbl);
+    el.appendChild(unit);
+  });
+}
+
+// ── Fuel modal ────────────────────────────────────────────────────────────────
+function openFuelModal() {
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('fuel-modal').classList.add('open');
+}
+function closeFuelModal() {
+  document.getElementById('fuel-modal').classList.remove('open');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  ['f-liters', 'f-price'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => {
+      const l = parseFloat(document.getElementById('f-liters').value);
+      const p = parseFloat(document.getElementById('f-price').value);
+      if (l > 0 && p > 0)
+        document.getElementById('f-total').value = (l * p).toFixed(0);
+    });
+  });
+
+  document.getElementById('f-odometer')?.addEventListener('input', () => {
+    const odo   = parseFloat(document.getElementById('f-odometer').value);
+    const liters = parseFloat(document.getElementById('f-liters').value);
+    const lastOdo = fuelLog.length ? fuelLog[fuelLog.length - 1].odometer : null;
+    const prev  = document.getElementById('f-mileage-preview');
+    if (lastOdo && odo > lastOdo && liters > 0) {
+      document.getElementById('f-mileage-val').textContent =
+        ((odo - lastOdo) / liters).toFixed(1) + ' km/L';
+      prev.style.display = 'block';
+    } else {
+      prev.style.display = 'none';
+    }
+  });
+});
+
+function addFuelEntry() {
+  const date          = document.getElementById('f-date').value;
+  const odometer      = parseFloat(document.getElementById('f-odometer').value);
+  const liters        = parseFloat(document.getElementById('f-liters').value);
+  const pricePerLiter = parseFloat(document.getElementById('f-price').value);
+  const totalCost     = parseFloat(document.getElementById('f-total').value)
+                        || +(liters * pricePerLiter).toFixed(0);
+  const station = document.getElementById('f-station').value;
+  const notes   = document.getElementById('f-notes').value.trim().slice(0, 200);
+
+  if (!date || !(odometer > 0) || !(liters > 0) || !(pricePerLiter > 0)) {
+    alert('Please fill in: Date, Odometer, Litres, and Price/L');
+    return;
+  }
+
+  const entry = { id: Date.now(), date, odometer, liters,
+    pricePerLiter: +pricePerLiter.toFixed(2),
+    totalCost: +totalCost.toFixed(0), station, notes };
+
+  const local = safeParseJSON(localStorage.getItem('fuel-log-local'), []);
+  local.push(entry);
+  localStorage.setItem('fuel-log-local', JSON.stringify(local));
+
+  fuelLog.push(entry);
+  fuelLog.sort((a, b) => new Date(a.date) - new Date(b.date));
+  computeMileages();
+  renderFuelLog();
+  closeFuelModal();
+  document.getElementById('export-notice').style.display = 'block';
+}
+
+function deleteFuelEntry(id) {
+  if (!confirm('Delete this fuel entry?')) return;
+  fuelLog = fuelLog.filter(f => f.id !== id);
+  const local = safeParseJSON(localStorage.getItem('fuel-log-local'), [])
+    .filter(f => f.id !== id);
+  localStorage.setItem('fuel-log-local', JSON.stringify(local));
+  computeMileages();
+  renderFuelLog();
+}
+
+function exportFuelLog() {
+  const json = JSON.stringify(fuelLog, null, 2);
+  const a = Object.assign(document.createElement('a'), {
+    href:     URL.createObjectURL(new Blob([json], { type: 'application/json' })),
+    download: 'fuel-log.json'
+  });
+  a.click();
+}
+
+// ── Service modal ─────────────────────────────────────────────────────────────
+function openServiceModal()  { document.getElementById('service-modal').classList.add('open'); }
+function closeServiceModal() { document.getElementById('service-modal').classList.remove('open'); }
+
+function submitServiceUpdate() {
+  const seq        = document.getElementById('svc-seq').value;
+  const actualDate = document.getElementById('svc-actual-date').value;
+  const laborCost  = parseFloat(document.getElementById('svc-labor-cost').value) || 0;
+  const addCost    = parseFloat(document.getElementById('svc-add-cost').value)   || 0;
+  const notes      = document.getElementById('svc-notes').value.trim().slice(0, 200);
+  if (!seq) { alert('Select a service number first.'); return; }
+  const snippet =
+    `Service #${seq}\n  Actual Date: ${actualDate}\n  Labor Cost: ₹${laborCost}\n  Additional: ₹${addCost}\n  Notes: ${notes}`;
+  navigator.clipboard.writeText(snippet)
+    .then(() => { alert('Copied to clipboard!\n\n' + snippet); closeServiceModal(); })
+    .catch(() => { prompt('Copy this snippet:', snippet); closeServiceModal(); });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function formatDate(str, short = false) {
+  if (!str || str === '—') return '—';
+  try {
+    const d = new Date(str);
+    if (isNaN(d)) return str;
+    return d.toLocaleDateString('en-IN', short
+      ? { month: 'short', day: 'numeric' }
+      : { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch { return str; }
+}
+
+function daysUntil(dateStr, fromStr) {
+  const from = fromStr ? new Date(fromStr) : new Date();
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(dateStr);
+  return Math.round((to - from) / 86400000);
+}
+</script>
+</body>
+</html>

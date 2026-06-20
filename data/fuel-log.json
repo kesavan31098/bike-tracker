@@ -1,0 +1,17 @@
+[
+  { "id": 1,  "date": "2024-12-16", "odometer": 1020, "liters": 5.5,  "pricePerLiter": 105.62, "totalCost": 581,  "station": "HP Petrol",        "notes": "First fill-up" },
+  { "id": 2,  "date": "2025-01-05", "odometer": 1230, "liters": 5.0,  "pricePerLiter": 105.62, "totalCost": 528,  "station": "Indian Oil",        "notes": "" },
+  { "id": 3,  "date": "2025-01-22", "odometer": 1460, "liters": 5.4,  "pricePerLiter": 105.62, "totalCost": 570,  "station": "HP Petrol",        "notes": "" },
+  { "id": 4,  "date": "2025-02-10", "odometer": 1700, "liters": 5.6,  "pricePerLiter": 105.62, "totalCost": 591,  "station": "Bharat Petroleum", "notes": "" },
+  { "id": 5,  "date": "2025-02-28", "odometer": 1950, "liters": 5.9,  "pricePerLiter": 105.62, "totalCost": 623,  "station": "HP Petrol",        "notes": "" },
+  { "id": 6,  "date": "2025-03-18", "odometer": 2200, "liters": 5.8,  "pricePerLiter": 105.62, "totalCost": 613,  "station": "Indian Oil",        "notes": "" },
+  { "id": 7,  "date": "2025-04-05", "odometer": 2470, "liters": 6.2,  "pricePerLiter": 105.62, "totalCost": 655,  "station": "HP Petrol",        "notes": "" },
+  { "id": 8,  "date": "2025-04-24", "odometer": 2730, "liters": 6.0,  "pricePerLiter": 104.72, "totalCost": 628,  "station": "Bharat Petroleum", "notes": "Price drop" },
+  { "id": 9,  "date": "2025-05-12", "odometer": 2990, "liters": 6.1,  "pricePerLiter": 104.72, "totalCost": 639,  "station": "Indian Oil",        "notes": "" },
+  { "id": 10, "date": "2025-06-01", "odometer": 3260, "liters": 6.3,  "pricePerLiter": 104.72, "totalCost": 660,  "station": "HP Petrol",        "notes": "" },
+  { "id": 11, "date": "2025-06-22", "odometer": 3530, "liters": 6.4,  "pricePerLiter": 104.72, "totalCost": 670,  "station": "Indian Oil",        "notes": "" },
+  { "id": 12, "date": "2025-07-14", "odometer": 3810, "liters": 6.5,  "pricePerLiter": 104.72, "totalCost": 681,  "station": "Bharat Petroleum", "notes": "" },
+  { "id": 13, "date": "2025-08-05", "odometer": 4090, "liters": 6.6,  "pricePerLiter": 105.62, "totalCost": 697,  "station": "HP Petrol",        "notes": "" },
+  { "id": 14, "date": "2025-08-28", "odometer": 4380, "liters": 6.8,  "pricePerLiter": 105.62, "totalCost": 718,  "station": "Indian Oil",        "notes": "" },
+  { "id": 15, "date": "2025-09-20", "odometer": 4670, "liters": 6.7,  "pricePerLiter": 105.62, "totalCost": 707,  "station": "HP Petrol",        "notes": "" }
+]
